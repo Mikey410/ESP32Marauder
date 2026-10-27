@@ -23,7 +23,7 @@ jobs:
         board:
         - name: Unexpected Maker ProS3 USB
           flag: MARAUDER_PROS3
-          fbqn: esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=default_16MB,PSRAM=enabled,USBMode=hwcdc,CDCOnBoot=cdc
+          fbqn: esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,PSRAM=enabled,USBMode=hwcdc,CDCOnBoot=cdc
           file_name: pros3_usb
           tft: false
           tft_file: ''
@@ -191,12 +191,14 @@ jobs:
     - name: Configure LilyGo T-Dongle C5 partition table
       if: matrix.board.flag == 'MARAUDER_T_DONGLE_C5'
       run: cp installer/partitions/t_dongle_c5.csv esp32_marauder/partitions.csv
+    - name: Configure ProS3 16MB partitions
+      run: cp installer/partitions/pros3_usb.csv esp32_marauder/partitions.csv
     - name: Build Marauder for ${{ matrix.board.name }}
       uses: ArminJo/arduino-test-compile@v3.3.0
       with:
         sketch-names: esp32_marauder.ino
         arduino-board-fqbn: ${{ matrix.board.fbqn }}
-        extra-arduino-cli-args: --warnings none --build-property compiler.cpp.extra_flags='-D${{ matrix.board.flag }}'
+        extra-arduino-cli-args: --warnings none --build-property upload.maximum_size=6291456 --build-property compiler.cpp.extra_flags='-D${{ matrix.board.flag }}'
         arduino-platform: esp32:esp32@${{ matrix.board.idf_ver }}
         platform-url: https://github.com/espressif/arduino-esp32/releases/download/${{ matrix.board.idf_ver }}/package_esp32_dev_index.json
     - name: Package ProS3 flash image
@@ -223,6 +225,9 @@ jobs:
         distribution: temurin
         java-version: '17'
     - uses: android-actions/setup-android@v3
+      with:
+        packages: platform-tools platforms;android-35 build-tools;35.0.0
+        log-accepted-android-sdk-licenses: false
     - uses: gradle/actions/setup-gradle@v4
       with:
         gradle-version: '8.9'
