@@ -1,0 +1,239 @@
+# Build only this board and its cable app; no release or full-matrix jobs.
+name: ProS3 USB phone build
+'on':
+  pull_request:
+    paths:
+    - esp32_marauder/**
+    - phone/android/**
+    - tools/test_pros3_usb.cpp
+    - .github/workflows/pros3-usb.yml
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: pros3-usb-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  firmware:
+    name: build ${{ matrix.board.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+        - name: Unexpected Maker ProS3 USB
+          flag: MARAUDER_PROS3
+          fbqn: esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=default_16MB,PSRAM=enabled,USBMode=hwcdc,CDCOnBoot=cdc
+          file_name: pros3_usb
+          tft: false
+          tft_file: ''
+          build_dir: esp32s3
+          addr: '0x0'
+          idf_ver: 3.3.4
+          nimble_ver: 2.3.8
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - uses: arduino/setup-arduino-cli@v2
+      with:
+        version: 1.2.2
+    - name: Verify Installed Cores
+      run: arduino-cli core list
+    - name: Build TestFile with ESP32 v${{ matrix.board.idf_ver }}
+      uses: ArminJo/arduino-test-compile@v3.2.1
+      with:
+        sketch-names: TestFile.ino
+        arduino-board-fqbn: esp32:esp32:esp32s2
+        arduino-platform: esp32:esp32@${{ matrix.board.idf_ver }}
+        platform-url: https://github.com/espressif/arduino-esp32/releases/download/${{ matrix.board.idf_ver }}/package_esp32_dev_index.json
+    - name: Verify Installed Cores Again
+      run: arduino-cli core list
+    - name: Show Arduino dir structure
+      run: 'find /home/runner/.arduino15/packages/esp32/hardware/
+
+        '
+    - name: Install ESP32Ping
+      uses: actions/checkout@v4
+      with:
+        repository: marian-craciunescu/ESP32Ping
+        ref: 1.6
+        path: CustomESP32Ping
+    - name: Install AsyncTCP
+      uses: actions/checkout@v4
+      with:
+        repository: ESP32Async/AsyncTCP
+        ref: v3.4.8
+        path: CustomAsyncTCP
+    - name: Install MicroNMEA
+      uses: actions/checkout@v4
+      with:
+        repository: stevemarple/MicroNMEA
+        ref: v2.0.6
+        path: CustomMicroNMEA
+    - name: Install ESPAsyncWebServer
+      uses: actions/checkout@v4
+      with:
+        repository: ESP32Async/ESPAsyncWebServer
+        ref: v3.8.1
+        path: CustomESPAsyncWebServer
+    - name: Install TFT_eSPI
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ matrix.board.tft_repo || 'Bodmer/TFT_eSPI' }}
+        ref: ${{ matrix.board.tft_ref || 'V2.5.34' }}
+        path: CustomTFT_eSPI
+    - name: Install XPT2046_Touchscreen
+      uses: actions/checkout@v4
+      with:
+        repository: PaulStoffregen/XPT2046_Touchscreen
+        ref: v1.4
+        path: CustomXPT2046_Touchscreen
+    - name: Install lv_arduino
+      uses: actions/checkout@v4
+      with:
+        repository: lvgl/lv_arduino
+        ref: 3.0.0
+        path: Customlv_arduino
+    - name: Install JPEGDecoder
+      uses: actions/checkout@v4
+      with:
+        repository: Bodmer/JPEGDecoder
+        ref: 1.8.0
+        path: CustomJPEGDecoder
+    - name: Install NimBLE-Arduino
+      uses: actions/checkout@v4
+      with:
+        repository: h2zero/NimBLE-Arduino
+        ref: ${{ matrix.board.nimble_ver }}
+        path: CustomNimBLE-Arduino
+    - name: Install Adafruit_NeoPixel
+      uses: actions/checkout@v4
+      with:
+        repository: adafruit/Adafruit_NeoPixel
+        ref: 1.12.0
+        path: CustomAdafruit_NeoPixel
+    - name: Install APA102 for LilyGo T-Dongle C5
+      if: matrix.board.flag == 'MARAUDER_T_DONGLE_C5'
+      uses: actions/checkout@v4
+      with:
+        repository: pololu/apa102-arduino
+        ref: 3.0.0
+        path: CustomAPA102
+    - name: Install ArduinoJson
+      uses: actions/checkout@v4
+      with:
+        repository: bblanchon/ArduinoJson
+        ref: v6.18.2
+        path: CustomArduinoJson
+    - name: Install LinkedList
+      uses: actions/checkout@v4
+      with:
+        repository: ivanseidel/LinkedList
+        ref: v1.3.3
+        path: CustomLinkedList
+    - name: Install EspSoftwareSerial
+      uses: actions/checkout@v4
+      with:
+        repository: plerup/espsoftwareserial
+        ref: 8.1.0
+        path: CustomEspSoftwareSerial
+    - name: Install Adafruit_BusIO
+      uses: actions/checkout@v4
+      with:
+        repository: adafruit/Adafruit_BusIO
+        ref: 1.15.0
+        path: CustomAdafruit_BusIO
+    - name: Install Adafruit_MAX1704X
+      uses: actions/checkout@v4
+      with:
+        repository: adafruit/Adafruit_MAX1704X
+        ref: 1.0.2
+        path: CustomAdafruit_MAX1704X
+    - name: Install Adafruit_TCA8418
+      run: cp -r libraries/Adafruit_TCA8418 CustomAdafruit_TCA8418
+    - name: Show Libraries
+      run: 'find /home/runner/ -name "Custom*"
+
+        '
+    - name: Configure TFT_eSPI
+      run: 'rm -f CustomTFT_eSPI/User_Setup_Select.h
+
+        cp User*.h CustomTFT_eSPI/
+
+        pwd
+
+        ls -la
+
+        ls -la CustomTFT_eSPI
+
+        '
+    - name: Install Esptool
+      run: pip install esptool==4.8.1
+    - name: Modify platform.txt
+      run: "if [[ ${{ matrix.board.idf_ver }} == \"2.0.11\" ]]; then\n  for i in $(find /home/runner/.arduino15/packages/esp32/hardware/esp32/\
+        \ -name \"platform.txt\"); do\n    sed -i 's/compiler.c.elf.libs.esp32c3=/compiler.c.elf.libs.esp32c3=-zmuldefs /'\
+        \ \"$i\"\n    sed -i 's/compiler.c.elf.libs.esp32s3=/compiler.c.elf.libs.esp32s3=-zmuldefs /' \"$i\"\n    sed -i 's/compiler.c.elf.libs.esp32s2=/compiler.c.elf.libs.esp32s2=-zmuldefs\
+        \ /' \"$i\"\n    sed -i 's/compiler.c.elf.libs.esp32=/compiler.c.elf.libs.esp32=-zmuldefs /' \"$i\"\n    sed -i 's/-fexceptions/-fno-exceptions/g'\
+        \ \"$i\"\n    cat \"$i\" | grep compiler.c.elf.libs.esp32c3\n    cat \"$i\" | grep compiler.c.elf.libs.esp32s3\n \
+        \   cat \"$i\" | grep compiler.c.elf.libs.esp32s2\n    cat \"$i\" | grep compiler.c.elf.libs.esp32\n  done\nfi\n\n\
+        if [[ ${{ matrix.board.idf_ver }} == \"3.3.4\" ]]; then\n  for i in $(find /home/runner/.arduino15/packages/esp32/hardware/esp32/\
+        \ -name \"platform.txt\"); do\n    sed -i 's/compiler.c.elf.extra_flags=/compiler.c.elf.extra_flags=-Wl,-zmuldefs\
+        \ /' \"$i\"\n  done\n  for f in $(find /home/runner/.arduino15/packages/esp32/tools/esp32-arduino-libs/ -name \"cpp_flags\"\
+        ); do\n    sed -i 's/-fexceptions/-fno-exceptions/g' \"$f\"\n  done\nfi\n"
+    - name: Configure TFT_eSPI (if needed)
+      run: "if [[ ${{ matrix.board.tft }} == true ]]; then\n  setup_file=\"$GITHUB_WORKSPACE/CustomTFT_eSPI/User_Setup_Select.h\"\
+        \n  setup_header=\"$GITHUB_WORKSPACE/CustomTFT_eSPI/${{ matrix.board.tft_file }}\"\n  test -f \"$setup_file\"\n  test\
+        \ -f \"$setup_header\"\n  sed -i 's|^//#include <${{ matrix.board.tft_file }}>|#include <${{ matrix.board.tft_file\
+        \ }}>|' \"$setup_file\"\n  grep -Fqx '#include <${{ matrix.board.tft_file }}>' \"$setup_file\" || {\n    echo \"::error::Failed\
+        \ to select ${{ matrix.board.tft_file }} in TFT_eSPI\"\n    exit 1\n  }\nfi\n"
+    - name: Configure LilyGo T-Dongle C5 partition table
+      if: matrix.board.flag == 'MARAUDER_T_DONGLE_C5'
+      run: cp installer/partitions/t_dongle_c5.csv esp32_marauder/partitions.csv
+    - name: Build Marauder for ${{ matrix.board.name }}
+      uses: ArminJo/arduino-test-compile@v3.3.0
+      with:
+        sketch-names: esp32_marauder.ino
+        arduino-board-fqbn: ${{ matrix.board.fbqn }}
+        extra-arduino-cli-args: --warnings none --build-property compiler.cpp.extra_flags='-D${{ matrix.board.flag }}'
+        arduino-platform: esp32:esp32@${{ matrix.board.idf_ver }}
+        platform-url: https://github.com/espressif/arduino-esp32/releases/download/${{ matrix.board.idf_ver }}/package_esp32_dev_index.json
+    - name: Package ProS3 flash image
+      run: "set -euo pipefail\nbuild=esp32_marauder/build/esp32.esp32.esp32s3\nmkdir -p pros3-artifacts\npython -m esptool\
+        \ --chip esp32s3 merge_bin -o pros3-artifacts/pros3-usb-full.bin --flash_size 16MB \\\n  0x0 \"$build/esp32_marauder.ino.bootloader.bin\"\
+        \ \\\n  0x8000 \"$build/esp32_marauder.ino.partitions.bin\" \\\n  0xe000 \"$HOME/.arduino15/packages/esp32/hardware/esp32/3.3.4/tools/partitions/boot_app0.bin\"\
+        \ \\\n  0x10000 \"$build/esp32_marauder.ino.bin\"\ncp \"$build/esp32_marauder.ino.bin\" pros3-artifacts/pros3-usb-app.bin\n\
+        cp docs/PROS3_USB.md pros3-artifacts/README.md\ngit rev-parse HEAD > pros3-artifacts/SOURCE_COMMIT.txt\n(cd pros3-artifacts\
+        \ && sha256sum *.bin > SHA256SUMS.txt)\n"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: pros3-usb-firmware
+        path: pros3-artifacts/
+        if-no-files-found: error
+        retention-days: 30
+    timeout-minutes: 30
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+    - uses: android-actions/setup-android@v3
+    - uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.9'
+    - name: USB command framing tests
+      run: g++ -std=c++17 -Wall -Wextra -Werror tools/test_pros3_usb.cpp -o /tmp/test-pros3 && /tmp/test-pros3
+    - name: Build and lint Android app
+      working-directory: phone/android
+      run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+    - uses: actions/upload-artifact@v4
+      with:
+        name: marauder-usb-android
+        path: phone/android/app/build/outputs/apk/debug/app-debug.apk
+        if-no-files-found: error
+        retention-days: 30

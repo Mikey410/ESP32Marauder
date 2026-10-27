@@ -68,14 +68,30 @@ void CommandLine::RunSetup() {
   Serial.print("> ");
 }
 
+#ifdef MARAUDER_PROS3
+#include "UsbCommandLine.h"
+#endif
+
 String CommandLine::getSerialInput() {
+#ifdef MARAUDER_PROS3
+  static UsbCommandLine line;
+  // A USB packet is not a command boundary. Wait for LF without blocking scans.
+  while (Serial.available()) {
+    const int next = Serial.read();
+    if (next < 0) break;
+    if (line.push(static_cast<char>(next))) {
+      String result(line.data());
+      result.trim();
+      return result;
+    }
+  }
+  return "";
+#else
   String input = "";
-
-  if (Serial.available() > 0)
-    input = Serial.readStringUntil('\n');
-
+  if (Serial.available() > 0) input = Serial.readStringUntil('\n');
   input.trim();
   return input;
+#endif
 }
 
 void CommandLine::main(uint32_t currentTime) {

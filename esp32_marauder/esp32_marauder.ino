@@ -330,8 +330,14 @@ void setup()
     digitalWrite(ACT_LED_PIN, LOW);
   #endif
 
-  while(!Serial)
-    delay(10);
+  #ifdef MARAUDER_PROS3
+    // Phone USB permission may arrive after boot; never wait forever for DTR.
+    const uint32_t usbWaitStarted = millis();
+    while (!Serial && millis() - usbWaitStarted < 1500) delay(10);
+    Serial.setTxTimeoutMs(10);
+  #else
+    while(!Serial) delay(10);
+  #endif
 
   #ifdef HAS_C5_SD
     sharedSPI.begin(SD_SCK, SD_MISO, SD_MOSI);
