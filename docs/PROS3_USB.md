@@ -122,3 +122,12 @@ Scan, stop, then tap Networks or BLE in Results to refresh device lists. Discove
 Advanced retains manual commands for uncommon flags. GPS, SD and display features are marked unavailable for the bare ProS3 configuration. The UI does not add missing hardware or new firmware commands. Password command echoes are hidden and transcripts are not persisted. Quotes/control characters are rejected because the existing firmware parser cannot safely represent them in quoted fields. The cached lists are bounded at 256 entries, with the first 60 shown as cards.
 
 CI checks command construction, field validation, streamed result parsing, credential-echo redaction, Android compilation and lint. Physical phone/board testing is still required.
+
+
+## Phone interface (0.3.0)
+
+The app now opens to Nearby, with Wi-Fi and Bluetooth discovery, named result cards and signal summaries. Tap Find networks/devices, allow time for discovery, then Finish scan to stop and retrieve the list. Tap a result for its actions. All 65 catalog entries remain in the searchable Tools page; Device contains connection controls and preferences.
+
+The normal screens have no console or command field. Tool readings open on demand. Device > Advanced preserves custom commands, the full bounded device response and the firmware command reference for uncommon options. Firmware functionality and hardware requirements are unchanged; this is a presentation-only Android update. Additional GPS, SD and display hardware is still required for corresponding features. The design does not imply those features can run on a bare board.
+
+Install the new APK only; no board reflash is needed. CI validates existing command mappings, unchanged catalog count, response parsing, human-readable device names and signal summaries, plus Android compilation and lint. Visual and interaction testing on a physical phone remains pending.

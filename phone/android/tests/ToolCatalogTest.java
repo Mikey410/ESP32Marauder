@@ -18,6 +18,15 @@ public class ToolCatalogTest {
         equal(r.accept("> #join -a 2 -p \"sec"),"");equal(r.accept("ret\"\n"),"[Wi-Fi join command hidden]\n");
         equal(ToolResults.redact("join -s"),"join -s");r.clear();if(!r.networks.isEmpty())throw new AssertionError("Clear failed");
         for(ToolCatalog.Tool t:ToolCatalog.ALL){String[] v=new String[t.fields.length];for(int i=0;i<v.length;i++){ToolCatalog.Field f=t.fields[i];v[i]=f.type.equals("choice")?f.choices[0]:f.type.equals("number")||f.type.equals("ap")?"1":"test";}t.command(v);}
+        ResultPresentation wifi=ResultPresentation.parse("[2][CH:6] My network -45 (selected)",false);
+        equal(wifi.name,"My network");equal(wifi.subtitle,"Channel 6 · Strong signal");equal(wifi.id,"2");
+        if(!wifi.selected)throw new AssertionError("Selection lost");
+        equal(ResultPresentation.parse("[1][CH:11]  -80",false).name,"Hidden network");
+        equal(ResultPresentation.parse("[1][RSSI:-60] Headphones",true).subtitle,"Good signal");
+        equal(ResultPresentation.parse("[1][CH:1] Network -50 inside name -90",false).name,"Network -50 inside name");
+        equal(ResultPresentation.reading("> #scanall"),"");equal(ResultPresentation.reading("Error: not connected"),"Error: not connected");
+        equal(ResultPresentation.reading("RSSI: -50"),"RSSI: -50");
+        if(ToolCatalog.ALL.size()!=65)throw new AssertionError("Tool catalog changed during visual redesign");
         System.out.println("Dashboard command and result tests passed ("+ToolCatalog.ALL.size()+" tools)");
     }
 }
