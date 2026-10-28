@@ -27,6 +27,22 @@ public class ToolCatalogTest {
         equal(ResultPresentation.reading("> #scanall"),"");equal(ResultPresentation.reading("Error: not connected"),"Error: not connected");
         equal(ResultPresentation.reading("RSSI: -50"),"RSSI: -50");
         if(ToolCatalog.ALL.size()!=65)throw new AssertionError("Tool catalog changed during visual redesign");
+        equal(ResultPresentation.reading("> RSSI: -55"),"RSSI: -55");
+        equal(ResultPresentation.reading("> Error: no data"),"Error: no data");
+        ToolResults progress=new ToolResults();equal(progress.accept("RSSI: -60\rRSSI: -"),"RSSI: -60\n");equal(progress.accept("55\r\n"),"RSSI: -55\n");
+        java.util.Map<String,String> nets=new java.util.LinkedHashMap<>();
+        nets.put("0","[0][CH:1] First -50");nets.put("7","[7][CH:6] Chosen -60 (selected)");
+        equal(ResultPresentation.preferredNetwork(nets,""),"7");equal(ResultPresentation.preferredNetwork(nets,"0"),"0");
+        nets.put("0","[0][CH:1] First -50 (selected)");equal(ResultPresentation.preferredNetwork(nets,""),"");
+        nets.clear();equal(ResultPresentation.preferredNetwork(nets,"7"),"");
+        CommandFeedback feedback=new CommandFeedback();int id=feedback.track("info");feedback.written(id);
+        equal(feedback.status(),"Sent over USB");feedback.accept("[App] Sent: info\n> #in");
+        equal(feedback.status(),"Sent over USB");feedback.accept("fo\r\n");equal(feedback.status(),"Device received request");
+        feedback.accept("> Error: not connected\n");equal(feedback.status(),"Device needs attention");
+        feedback.accept("Other output\n");equal(feedback.detail,"Error: not connected");
+        id=feedback.track("channel");feedback.accept("#info\nUnrelated output\n");feedback.timeout(id);equal(feedback.status(),"No device confirmation");
+        feedback.accept("#channel\nChannel: 6\n");equal(feedback.status(),"Device replied");equal(feedback.detail,"Channel: 6");
+        feedback.clear();equal(feedback.status(),"No request yet");
         System.out.println("Dashboard command and result tests passed ("+ToolCatalog.ALL.size()+" tools)");
     }
 }

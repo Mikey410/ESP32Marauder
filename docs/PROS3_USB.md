@@ -131,3 +131,14 @@ The app now opens to Nearby, with Wi-Fi and Bluetooth discovery, named result ca
 The normal screens have no console or command field. Tool readings open on demand. Device > Advanced preserves custom commands, the full bounded device response and the firmware command reference for uncommon options. Firmware functionality and hardware requirements are unchanged; this is a presentation-only Android update. Additional GPS, SD and display hardware is still required for corresponding features. The design does not imply those features can run on a bare board.
 
 Install the new APK only; no board reflash is needed. CI validates existing command mappings, unchanged catalog count, response parsing, human-readable device names and signal summaries, plus Android compilation and lint. Visual and interaction testing on a physical phone remains pending.
+
+
+## Live activity and command feedback (0.3.1)
+
+Activity is a persistent page for live firmware readings, device-reported errors and selected-network summaries. Tool actions open this page automatically; discovery keeps Nearby open and Activity remains available in the bottom tabs. Cards update as complete serial records arrive, including carriage-return progress updates. Selecting a target is distinct from joining a Wi-Fi network.
+
+Command feedback separates a successful USB write from a matching firmware echo and subsequent device output. After five seconds without a matching echo, it reports no confirmation; it does not retry the command or claim success. An echo or a starting message does not prove any radio effect. Tools that emit no measurements cannot display live measurements.
+
+Network forms use an explicitly tapped network or a unique firmware-reported selected network. Otherwise they require an explicit choice instead of silently defaulting to the first network. The existing catalog and firmware commands are preserved. App-generated send messages no longer share the input stream with incoming serial fragments. Full board responses remain available under Advanced.
+
+This APK-only update requires no reflash. Physical board/phone verification is still needed; use Activity to inspect the actual response if a tool fails.

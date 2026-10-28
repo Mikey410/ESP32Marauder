@@ -74,7 +74,10 @@ public class MainActivity extends Activity {
     }
     private static final int INK=0xff1c1c1e, MUTED=0xff767680, BLUE=0xff007aff, SURFACE=0xfff2f2f7;
     private LinearLayout toolList, resultCards, devicePage, activeBar, readings;
-    private ScrollView resultsPage, toolsScroll, deviceScroll;
+    private ScrollView resultsPage, toolsScroll, deviceScroll, activityPage;
+    private LinearLayout liveCards;
+    private TextView liveTitle, feedbackTitle, feedbackDetail, targetSummary;
+    private final CommandFeedback feedback=new CommandFeedback();
     private TextView activityLabel, pageTitle;
     private Button connectionButton, scanButton, wifiSegment, bleSegment;
     private final List<Button> navButtons=new ArrayList<>();
@@ -119,20 +122,28 @@ public class MainActivity extends Activity {
         search.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int c,int f){}public void onTextChanged(CharSequence s,int a,int b,int c){query=s.toString().trim();renderTools();}public void afterTextChanged(android.text.Editable e){}});
         toolList=column();toolsContent.addView(toolList);
         deviceScroll=new ScrollView(this);deviceScroll.setVerticalScrollBarEnabled(false);devicePage=column();deviceScroll.addView(devicePage);pages.addView(deviceScroll);
+        activityPage=new ScrollView(this);activityPage.setVerticalScrollBarEnabled(false);LinearLayout activityContent=column();activityPage.addView(activityContent);pages.addView(activityPage);
+        liveTitle=text("Device activity",22,INK);activityContent.addView(liveTitle);space(activityContent,12);
+        LinearLayout evidence=surface(activityContent);feedbackTitle=text("No request yet",18,INK);evidence.addView(feedbackTitle);space(evidence,8);feedbackDetail=text("Open a tool to see its device responses here.",14,MUTED);evidence.addView(feedbackDetail);
+        targetSummary=text("No confirmed network selections",14,MUTED);activityContent.addView(targetSummary);
+        activityContent.addView(action("Refresh selected networks",false,()->send("list -a")));space(activityContent,12);
+        TextView note=text("Device responses confirm communication, not the effect of a radio tool.",12,MUTED);activityContent.addView(note);
+        section(activityContent,"Live readings");liveCards=column();activityContent.addView(liveCards);
         activeBar=new LinearLayout(this);activeBar.setGravity(Gravity.CENTER_VERTICAL);activeBar.setPadding(dp(12),dp(8),dp(8),dp(8));activeBar.setBackground(background(Color.WHITE,18));
-        activityLabel=text("",13,INK);activityLabel.setMaxLines(2);activityLabel.setOnClickListener(v->openReadings("Device readings"));activeBar.addView(activityLabel,new LinearLayout.LayoutParams(0,-2,1));
+        activityLabel=text("",13,INK);activityLabel.setMaxLines(2);activityLabel.setOnClickListener(v->showTab("Activity"));activeBar.addView(activityLabel,new LinearLayout.LayoutParams(0,-2,1));
         Button stop=action("Stop",false,this::stopActivity);stop.setTextColor(0xffd93338);activeBar.addView(stop);root.addView(activeBar);activeBar.setVisibility(View.GONE);
         LinearLayout nav=new LinearLayout(this);nav.setPadding(0,dp(10),0,0);root.addView(nav);
-        for(String tab:new String[]{"Nearby","Tools","Device"}){
+        for(String tab:new String[]{"Nearby","Tools","Activity","Device"}){
             Button b=action(tab,false,()->showTab(tab));b.setTextSize(12);b.setCompoundDrawablesWithIntrinsicBounds(null,new AppIcon(tab,dp(23),BLUE),null,null);b.setCompoundDrawablePadding(dp(5));nav.addView(b,new LinearLayout.LayoutParams(0,-2,1));navButtons.add(b);
         }
         // Transport keeps a bounded private buffer; no console is attached to the UI.
         output=new TextView(this);
-        renderTools();renderResults();renderDevice();showTab("Nearby");
+        renderTools();renderResults();renderDevice();renderLive();showTab("Nearby");
     }
     private void showTab(String tab){
         pageTitle.setText(tab);resultsPage.setVisibility(tab.equals("Nearby")?View.VISIBLE:View.GONE);toolsScroll.setVisibility(tab.equals("Tools")?View.VISIBLE:View.GONE);deviceScroll.setVisibility(tab.equals("Device")?View.VISIBLE:View.GONE);
         for(Button b:navButtons){boolean selected=b.getText().toString().equals(tab);b.setTextColor(selected?BLUE:MUTED);b.setBackground(background(selected?0xffe6efff:SURFACE,16));b.setCompoundDrawablesWithIntrinsicBounds(null,new AppIcon(b.getText().toString(),dp(23),selected?BLUE:MUTED),null,null);}
+        activityPage.setVisibility(tab.equals("Activity")?View.VISIBLE:View.GONE);
         if(tab.equals("Device"))renderDevice();
     }
     private void setDiscovery(boolean value){bluetooth=value;renderResults();}
@@ -141,6 +152,7 @@ public class MainActivity extends Activity {
         connectionButton.setText(connected?"Connected":"Connect");
         wifiSegment.setBackground(background(!bluetooth?Color.WHITE:0xffe5e5ea,11));bleSegment.setBackground(background(bluetooth?Color.WHITE:0xffe5e5ea,11));wifiSegment.setTextColor(!bluetooth?INK:MUTED);bleSegment.setTextColor(bluetooth?INK:MUTED);
         scanButton.setText(!discoveryMode.isEmpty()?"Finish scan":bluetooth?"Find devices":"Find networks");
+        renderFeedback();
         resultCards.removeAllViews();Map<String,String> data=bluetooth?results.ble:results.networks;
         if(data.isEmpty()){
             LinearLayout empty=surface(resultCards);empty.setGravity(Gravity.CENTER);empty.setPadding(dp(24),dp(34),dp(24),dp(34));
@@ -180,7 +192,7 @@ public class MainActivity extends Activity {
             if(ble){runDirect("Find signal","foxhunt -b "+item.id,true);return;}
             if(which==0)runDirect(item.name,"info -a "+item.id,false);
             if(which==1){preferredAp=item.id;configure(findTool("join -a {0} -p {1}"));preferredAp="";}
-            if(which==2){send("select -a "+item.id);send("list -a");}
+            if(which==2){beginReadout("Network selection");send("select -a "+item.id);send("list -a");showTab("Activity");}
             if(which==3)runDirect("Find signal","foxhunt -w "+item.id,true);
         }).setNegativeButton("Done",null).show();
     }
@@ -212,14 +224,14 @@ public class MainActivity extends Activity {
             LinearLayout r=surface(devicePage);r.addView(text(item[0]+"  ›",16,INK));r.setOnClickListener(v->configure(findTool(item[1])));r.setFocusable(true);
         }
         LinearLayout advancedRow=surface(devicePage);advancedRow.addView(text("Advanced  ›",16,INK));advancedRow.setOnClickListener(v->advanced());advancedRow.setFocusable(true);
-        section(devicePage,"About");LinearLayout about=surface(devicePage);about.addView(text("Marauder",17,INK));space(about,6);about.addView(text("Version 0.3 · USB connection",14,MUTED));
+        section(devicePage,"About");LinearLayout about=surface(devicePage);about.addView(text("Marauder",17,INK));space(about,6);about.addView(text("Version 0.3.1 · USB connection",14,MUTED));
         about.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("About this app").setMessage("Controls the Marauder firmware on your ProS3 through a USB cable. GPS, SD card and on-board display features need additional hardware.").setPositiveButton("Done",null).show());
     }
-    private void beginReadout(String title){recentReadings.clear();renderReadings();}
+    private void beginReadout(String title){activeTitle=title;recentReadings.clear();renderReadings();renderLive();}
     private void runDirect(String title,String command,boolean starts){
         beginReadout(title);if(starts&&!send("stopscan"))return;if(!send(command))return;
         if(command.equals("clearlist -a")){results.networks.clear();renderResults();}
-        if(starts){markActivity(title);discoveryMode="";renderResults();}openReadings(title);
+        if(starts){markActivity(title);discoveryMode="";renderResults();}showTab("Activity");
     }
     private void openReadings(String title){
         if(readingDialog!=null)readingDialog.dismiss();ScrollView scrollView=new ScrollView(this);readings=column();readings.setPadding(dp(22),dp(8),dp(22),dp(16));scrollView.addView(readings);
@@ -232,7 +244,26 @@ public class MainActivity extends Activity {
     }
     private void acceptReadings(String parsed){
         boolean changed=false;for(String line:parsed.split("\n")){String clean=ResultPresentation.reading(line);if(clean.isEmpty())continue;if(recentReadings.size()>=32)recentReadings.remove(0);recentReadings.add(clean);changed=true;}
-        if(changed)renderReadings();
+        if(changed){renderReadings();renderLive();}
+    }
+    private void renderFeedback(){
+        if(feedbackTitle==null)return;feedbackTitle.setText(feedback.status());feedbackTitle.setTextColor(feedback.attention?0xffc52b31:INK);
+        String detail=feedback.detail;
+        if(detail.isEmpty())detail=feedback.timedOut?"No matching reply yet. Check USB connection; the action is not confirmed.":feedback.received?"The board echoed this request. Waiting for its output.":"Waiting for a reply from the ProS3.";
+        feedbackDetail.setText(detail);
+        List<String> selected=new ArrayList<>();for(String raw:results.networks.values()){ResultPresentation r=ResultPresentation.parse(raw,false);if(r.selected)selected.add(r.name);}
+        targetSummary.setText(selected.isEmpty()?"No confirmed network selections":"Selected on device: "+android.text.TextUtils.join(", ",selected));
+        if(activeBar.getVisibility()==View.VISIBLE)activityLabel.setText(activeTitle+"\n"+feedback.status());
+    }
+    private void renderLive(){
+        if(liveCards==null)return;liveTitle.setText(activeTitle.isEmpty()?"Device activity":activeTitle);liveCards.removeAllViews();
+        if(recentReadings.isEmpty()){LinearLayout c=surface(liveCards);c.addView(text("No readings yet",19,INK));space(c,8);c.addView(text("Live output appears here when the firmware sends it. Some tools only return a status message.",14,MUTED));return;}
+        for(int i=recentReadings.size()-1;i>=0;i--){String line=recentReadings.get(i);LinearLayout c=surface(liveCards);
+            int colon=line.indexOf(':');
+            if(colon>0&&colon<36&&colon<line.length()-1&&!line.startsWith("[")){
+                c.addView(text(line.substring(0,colon).trim(),13,MUTED));space(c,6);TextView value=text(line.substring(colon+1).trim(),22,INK);value.setTextIsSelectable(true);c.addView(value);
+            }else{TextView value=text(line,16,INK);value.setTextIsSelectable(true);c.addView(value);}
+        }
     }
     private void configure(ToolCatalog.Tool tool){
         if(!connected){chooseDevice();return;}
@@ -248,9 +279,10 @@ public class MainActivity extends Activity {
                 final List<String> values=new ArrayList<>(),labels=new ArrayList<>();
                 if(f.type.equals("ap")){
                     if(results.networks.isEmpty()){new AlertDialog.Builder(this).setTitle("Discover networks first").setMessage("Open Nearby, find networks, then finish the scan. You can then choose a network by name.").setPositiveButton("OK",null).show();return;}
+                    values.add("");labels.add("Choose a network");
                     for(Map.Entry<String,String> e:results.networks.entrySet()){values.add(e.getKey());labels.add(ResultPresentation.parse(e.getValue(),false).name+" · "+ResultPresentation.parse(e.getValue(),false).subtitle);}
                 }else{values.addAll(Arrays.asList(f.choices));labels.addAll(values);}
-                Spinner spinner=new Spinner(this);ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,labels);adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);spinner.setAdapter(adapter);if(f.type.equals("ap")&&!preferredAp.isEmpty()&&values.contains(preferredAp))spinner.setSelection(values.indexOf(preferredAp));form.addView(spinner);readers.add(()->values.get(spinner.getSelectedItemPosition()));
+                Spinner spinner=new Spinner(this);ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,labels);adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);spinner.setAdapter(adapter);String initialAp=ResultPresentation.preferredNetwork(results.networks,preferredAp);if(f.type.equals("ap")&&!initialAp.isEmpty()&&values.contains(initialAp))spinner.setSelection(values.indexOf(initialAp));form.addView(spinner);readers.add(()->values.get(spinner.getSelectedItemPosition()));
             }else{
                 EditText input=new EditText(this);input.setSingleLine(true);
                 input.setInputType(f.type.equals("number")?android.text.InputType.TYPE_CLASS_NUMBER:android.text.InputType.TYPE_CLASS_TEXT|(f.type.equals("password")?android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD:android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
@@ -283,7 +315,7 @@ public class MainActivity extends Activity {
             }else if(which==1){TextView detail=text(output.getText().toString(),14,INK);detail.setTextIsSelectable(true);detail.setPadding(dp(20),dp(12),dp(20),dp(12));ScrollView sv=new ScrollView(this);sv.addView(detail);new AlertDialog.Builder(this).setTitle("Full device response").setView(sv).setPositiveButton("Done",null).show();
             }else if(which==2)runDirect("Command reference","help",false);
             else if(which==3)stopActivity();
-            else {synchronized(textLock){pendingText.setLength(0);}results.clear();recentReadings.clear();output.setText("");renderResults();renderReadings();Toast.makeText(this,"Phone results cleared",Toast.LENGTH_SHORT).show();}
+            else {synchronized(textLock){pendingText.setLength(0);}results.clear();recentReadings.clear();output.setText("");feedback.clear();renderResults();renderReadings();renderLive();Toast.makeText(this,"Phone results cleared",Toast.LENGTH_SHORT).show();}
         }).setNegativeButton("Done",null).show();
     }
 
@@ -347,7 +379,6 @@ public class MainActivity extends Activity {
                     if (session != generation) return;
                     connected = true; opening = false;
                     status.setText("ProS3 connected"); renderTools(); renderResults(); renderDevice();
-                    append("\n[USB connected. Choose a tool to begin.]\n");
                 });
             } catch (Exception e) {
                 closeTransport();
@@ -360,12 +391,14 @@ public class MainActivity extends Activity {
         String line = text.trim(); byte[] payload = (line + "\n").getBytes(StandardCharsets.UTF_8);
         if (line.isEmpty()) return false;
         if (payload.length > 513 || line.indexOf('\n') >= 0 || line.indexOf('\r') >= 0 || line.indexOf('\0') >= 0) {
-            append("\n[One command per send; maximum 512 UTF-8 bytes.]\n"); return false;
+            status.setText("Use one command, up to 512 UTF-8 bytes."); return false;
         }
+        final int feedbackId=feedback.track(line);renderFeedback();
+        ui.postDelayed(()->{feedback.timeout(feedbackId);renderFeedback();},5000);
         final int session = generation;
         usbWorker.execute(() -> {
             if (session != generation || port == null) return;
-            try { port.write(payload, 1500); append("\n> " + ToolResults.redact(line) + "\n"); }
+            try { port.write(payload, 1500); ui.post(()->{if(session==generation){feedback.written(feedbackId);renderFeedback();}}); }
             catch (Exception e) { ui.post(() -> { if (session == generation) disconnect("USB write failed · reconnect", false); }); }
         });
         return true;
@@ -397,6 +430,7 @@ public class MainActivity extends Activity {
             String chunk;
             synchronized(textLock) { chunk = pendingText.toString(); pendingText.setLength(0); flushScheduled = false; }
             int previousRevision = results.revision;
+            feedback.accept(chunk);renderFeedback();
             String parsed = results.accept(chunk);
             output.append(parsed);
             acceptReadings(parsed);
@@ -410,7 +444,7 @@ public class MainActivity extends Activity {
         synchronized(textLock) { pendingText.setLength(0); }
         results.clear(); renderTools(); renderResults();
         discoveryMode=""; activeBar.setVisibility(View.GONE);
-        recentReadings.clear(); renderReadings(); renderResults(); renderDevice();
+        recentReadings.clear(); feedback.clear(); renderReadings(); renderLive(); renderResults(); renderDevice();
         usbWorker.execute(() -> {
             if (stopScan && port != null) {
                 try { port.write("stopscan\n".getBytes(StandardCharsets.UTF_8), 300); } catch (Exception ignored) { }

@@ -4,6 +4,7 @@ import java.util.regex.*;
 final class ToolResults {
     final Map<String,String> networks=new LinkedHashMap<>(), ble=new LinkedHashMap<>();
     int revision;
+    private boolean previousCR;
     private final StringBuilder tail=new StringBuilder();
     private static final Pattern AP=Pattern.compile("\\[(\\d+)\\]\\[CH:[^\\]]+\\].*");
     private static final Pattern BLE=Pattern.compile("\\[(\\d+)\\]\\[RSSI:[^\\]]+\\].*");
@@ -11,8 +12,9 @@ final class ToolResults {
     String accept(String chunk){
         StringBuilder out=new StringBuilder();
         for(char c:chunk.toCharArray()){
-            if(c=='\r')continue;
-            if(c=='\n'){
+            if(c=='\n' && previousCR){previousCR=false;continue;}
+            previousCR=c=='\r';
+            if(c=='\n'||c=='\r'){
                 String line=tail.toString();tail.setLength(0);
                 Matcher a=AP.matcher(line),b=BLE.matcher(line);
                 if(a.find()&&(networks.size()<256||networks.containsKey(a.group(1)))){if(!a.group().equals(networks.put(a.group(1),a.group())))revision++;}
@@ -22,5 +24,5 @@ final class ToolResults {
         }
         return out.toString();
     }
-    void clear(){networks.clear();ble.clear();tail.setLength(0);}
+    void clear(){networks.clear();ble.clear();tail.setLength(0);previousCR=false;}
 }

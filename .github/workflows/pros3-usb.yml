@@ -238,7 +238,7 @@ jobs:
       working-directory: phone/android
       run: |
         mkdir -p /tmp/dashboard-tests
-        javac -d /tmp/dashboard-tests app/src/main/java/com/mikey410/marauder/ToolCatalog.java app/src/main/java/com/mikey410/marauder/ToolResults.java app/src/main/java/com/mikey410/marauder/ResultPresentation.java tests/ToolCatalogTest.java
+        javac -d /tmp/dashboard-tests app/src/main/java/com/mikey410/marauder/ToolCatalog.java app/src/main/java/com/mikey410/marauder/ToolResults.java app/src/main/java/com/mikey410/marauder/ResultPresentation.java app/src/main/java/com/mikey410/marauder/CommandFeedback.java tests/ToolCatalogTest.java
         java -cp /tmp/dashboard-tests com.mikey410.marauder.ToolCatalogTest
     - name: Build and lint Android app
       working-directory: phone/android

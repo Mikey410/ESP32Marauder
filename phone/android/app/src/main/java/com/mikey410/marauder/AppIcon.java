@@ -21,7 +21,7 @@ final class AppIcon extends Drawable {
                 canvas.drawRoundRect(5,3,19,21,3,3,paint);line(canvas,9,7,15,7);canvas.drawCircle(12,17,1,paint);break;
             case "Tools":
                 for(int x:new int[]{3,14})for(int y:new int[]{3,14})canvas.drawRoundRect(x,y,x+7,y+7,2,2,paint);break;
-            case "Monitor":
+            case "Activity":case "Monitor":
                 line(canvas,2,12,6,12);line(canvas,6,12,9,5);line(canvas,9,5,14,20);line(canvas,14,20,17,10);line(canvas,17,10,22,10);break;
             case "Targets":case "Remote ID":
                 canvas.drawCircle(12,12,7,paint);canvas.drawCircle(12,12,2,paint);line(canvas,12,1,12,5);line(canvas,12,19,12,23);line(canvas,1,12,5,12);line(canvas,19,12,23,12);break;
