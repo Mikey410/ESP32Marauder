@@ -242,7 +242,11 @@ jobs:
         java -cp /tmp/dashboard-tests com.mikey410.marauder.ToolCatalogTest
     - name: Build and lint Android app
       working-directory: phone/android
-      run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+      run: |
+        if ! gradle --no-daemon :app:assembleDebug :app:lintDebug; then
+          find app/build -name lint-results-debug.txt -exec cat {} \;
+          exit 1
+        fi
     - uses: actions/upload-artifact@v4
       with:
         name: marauder-usb-android
