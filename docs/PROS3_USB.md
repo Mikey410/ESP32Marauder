@@ -84,7 +84,7 @@ Only this board is compiled. FQBN:
 esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,PSRAM=enabled,USBMode=hwcdc,CDCOnBoot=cdc
 ```
 
-Copy `installer/partitions/pros3_usb.csv` to `esp32_marauder/partitions.csv`
+Copy `hardware/pros3/partitions.csv` to `esp32_marauder/partitions.csv`
 for this target only. It provides two 6 MiB app slots and SPIFFS within 16 MiB.
 Compile `esp32_marauder` with `compiler.cpp.extra_flags=-DMARAUDER_PROS3`
 and `upload.maximum_size=6291456`.

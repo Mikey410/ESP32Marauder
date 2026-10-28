@@ -4,6 +4,7 @@ name: ProS3 USB phone build
   pull_request:
     paths:
     - esp32_marauder/**
+    - hardware/pros3/**
     - phone/android/**
     - tools/test_pros3_usb.cpp
     - .github/workflows/pros3-usb.yml
@@ -192,7 +193,7 @@ jobs:
       if: matrix.board.flag == 'MARAUDER_T_DONGLE_C5'
       run: cp installer/partitions/t_dongle_c5.csv esp32_marauder/partitions.csv
     - name: Configure ProS3 16MB partitions
-      run: cp installer/partitions/pros3_usb.csv esp32_marauder/partitions.csv
+      run: cp hardware/pros3/partitions.csv esp32_marauder/partitions.csv
     - name: Build Marauder for ${{ matrix.board.name }}
       uses: ArminJo/arduino-test-compile@v3.3.0
       with:
