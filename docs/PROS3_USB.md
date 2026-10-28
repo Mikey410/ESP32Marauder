@@ -109,3 +109,16 @@ with their respective authors. No release signing credentials are included.
 - Leave a busy scan running for ten minutes: console remains responsive and STOP
   works. Inspect power/USB stability on your actual cable and phone.
 - Check existing desktop USB serial operation still works at 115200.
+
+
+## Phone dashboard (0.2.0)
+
+Install the updated `app-debug.apk` from the `marauder-usb-android` artifact. This is an app-only update; no firmware reflash is needed if the ProS3 USB build is already installed. If Android reports a conflicting signature, uninstall the previous app and install this APK again. That does not erase the board firmware.
+
+The Tools page groups Wi-Fi, monitoring, Bluetooth, network diagnostics, targets, Remote ID, lab tools, and device settings. Tools have buttons, drop-downs and validated fields. Stop is always available. Start requests are labeled as requests; the firmware response in Results is authoritative.
+
+Scan, stop, then tap Networks or BLE in Results to refresh device lists. Discovered networks appear as cards and in network pickers. Selection controls toggle firmware selections. Network diagnostics require joining your own network first. Clear view clears the phone display only; Clear list explicitly changes a firmware list.
+
+Advanced retains manual commands for uncommon flags. GPS, SD and display features are marked unavailable for the bare ProS3 configuration. The UI does not add missing hardware or new firmware commands. Password command echoes are hidden and transcripts are not persisted. Quotes/control characters are rejected because the existing firmware parser cannot safely represent them in quoted fields. The cached lists are bounded at 256 entries, with the first 60 shown as cards.
+
+CI checks command construction, field validation, streamed result parsing, credential-echo redaction, Android compilation and lint. Physical phone/board testing is still required.

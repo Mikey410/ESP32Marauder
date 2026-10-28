@@ -16,7 +16,7 @@ import java.nio.charset.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-/** Local USB host console. No network permissions or persistent transcript. */
+/** Local USB tool dashboard. No network permissions or persistent transcript. */
 public class MainActivity extends Activity {
     private static final String PERMISSION = "com.mikey410.marauder.USB_PERMISSION";
     private final ExecutorService usbWorker = Executors.newSingleThreadExecutor();
@@ -31,7 +31,6 @@ public class MainActivity extends Activity {
     private boolean opening;
     private int activeDevice = -1, pendingDevice = -1;
     private TextView status, output;
-    private EditText command;
     private ScrollView scroll;
     private final Object textLock = new Object();
     private final StringBuilder pendingText = new StringBuilder();
@@ -67,47 +66,115 @@ public class MainActivity extends Activity {
                 dp(18) + insets.getSystemWindowInsetRight(), dp(12) + insets.getSystemWindowInsetBottom());
             return insets;
         });
-        TextView title = label("MARAUDER / USB", 24, 0xffffad64);
-        root.addView(title);
-        root.addView(label("ProS3  ·  Cable console", 13, 0xff98a7b8));
-        status = label("Connect your ProS3 with a USB-C data cable", 13, 0xffc8d5e4);
-        status.setPadding(0, dp(14), 0, dp(10)); root.addView(status);
-        LinearLayout row = row(root);
-        button(row, "Connect", this::chooseDevice);
-        button(row, "Disconnect", () -> disconnect("Disconnected", true));
-        row = row(root);
-        button(row, "Wi-Fi scan", () -> send("scanall"));
-        button(row, "BLE scan", () -> send("sniffbt"));
-        button(row, "STOP", () -> send("stopscan"));
-        row = row(root);
-        button(row, "Networks", () -> send("list -a"));
-        button(row, "Devices", () -> send("list -b"));
-        button(row, "Help", () -> send("help"));
-        scroll = new ScrollView(this);
-        output = label("Ready. Connect, approve USB access, then choose a scan or enter a command.\n", 12, 0xffc3dfd0);
-        output.setTypeface(Typeface.MONOSPACE);
-        output.setTextIsSelectable(true);
-        output.setPadding(dp(10), dp(10), dp(10), dp(10));
-        scroll.setBackgroundColor(0xff121b25); scroll.addView(output);
-        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        command = new EditText(this); command.setSingleLine(true);
-        command.setTextColor(Color.WHITE); command.setHintTextColor(0xff8896a7);
-        command.setHint("Marauder command…");
-        command.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        root.addView(command);
-        row = row(root);
-        button(row, "Send", () -> { if (send(command.getText().toString())) command.setText(""); });
-        button(row, "Clear", () -> { synchronized(textLock) { pendingText.setLength(0); } output.setText(""); });
-        command.setOnEditorActionListener((v, action, event) -> {
-            if (action == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
-                if (send(command.getText().toString())) command.setText(""); return true;
-            } return false;
-        });
+        buildDashboard(root);
         setContentView(root);
         IntentFilter filter = new IntentFilter(PERMISSION);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
     }
+    private LinearLayout toolsPage, toolList, resultCards;
+    private ScrollView resultsPage, toolsScroll;
+    private TextView activityLabel;
+    private String category="Wi-Fi";
+    private final ToolResults results=new ToolResults();
+    private final List<Button> launchButtons=new ArrayList<>();
+    private void buildDashboard(LinearLayout root) {
+        root.addView(label("MARAUDER",26,0xffffad64));
+        root.addView(label("PROS3  /  USB TOOLKIT",12,0xff98a7b8));
+        status=label("Connect your ProS3 with a USB-C data cable",13,0xffc8d5e4);
+        status.setPadding(0,dp(10),0,dp(6)); root.addView(status);
+        LinearLayout controls=row(root);
+        button(controls,"Connect",this::chooseDevice);
+        button(controls,"Disconnect",()->disconnect("Disconnected",true));
+        button(controls,"Stop",()->{if(send("stopscan"))activityLabel.setText("Stop requested · check device response in Results");});
+        activityLabel=label("Ready · choose a tool below",12,0xffa7bdce);root.addView(activityLabel);
+        LinearLayout nav=row(root);
+        button(nav,"Tools",()->showResults(false));button(nav,"Results",()->showResults(true));button(nav,"Advanced",this::advanced);
+        toolsPage=new LinearLayout(this);toolsPage.setOrientation(LinearLayout.VERTICAL);
+        root.addView(toolsPage,new LinearLayout.LayoutParams(-1,0,1));
+        HorizontalScrollView categories=new HorizontalScrollView(this);categories.setHorizontalScrollBarEnabled(false);
+        LinearLayout chips=new LinearLayout(this);categories.addView(chips);toolsPage.addView(categories);
+        Set<String> names=new LinkedHashSet<>();for(ToolCatalog.Tool t:ToolCatalog.ALL)names.add(t.category);
+        for(String name:names){Button chip=new Button(this);chip.setText(name);chip.setAllCaps(false);chips.addView(chip);
+            chip.setOnClickListener(v->{category=name;renderTools();toolsScroll.smoothScrollTo(0,0);});}
+        toolsScroll=new ScrollView(this);toolList=new LinearLayout(this);toolList.setOrientation(LinearLayout.VERTICAL);toolsScroll.addView(toolList);
+        toolsPage.addView(toolsScroll,new LinearLayout.LayoutParams(-1,0,1));
+        resultsPage=new ScrollView(this);scroll=resultsPage;
+        LinearLayout content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);resultsPage.addView(content);
+        root.addView(resultsPage,new LinearLayout.LayoutParams(-1,0,1));
+        LinearLayout refresh=row(content);button(refresh,"Networks",()->send("list -a"));button(refresh,"BLE",()->send("list -b"));
+        button(refresh,"Clear view",()->{synchronized(textLock){pendingText.setLength(0);}results.clear();output.setText("");renderResults();});
+        content.addView(label("Stop a scan, then refresh its list. Names below come from your device.",12,0xff98a7b8));
+        resultCards=new LinearLayout(this);resultCards.setOrientation(LinearLayout.VERTICAL);content.addView(resultCards);
+        content.addView(label("Device responses",18,0xffffad64));
+        output=label("",13,0xffc3dfd0);output.setTextIsSelectable(true);output.setPadding(dp(8),dp(8),dp(8),dp(8));content.addView(output);
+        renderTools();renderResults();showResults(false);
+    }
+    private void showResults(boolean show){toolsPage.setVisibility(show?View.GONE:View.VISIBLE);resultsPage.setVisibility(show?View.VISIBLE:View.GONE);}
+    private LinearLayout card(LinearLayout parent,String title,String description){
+        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(14),dp(12),dp(14),dp(10));
+        android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();bg.setColor(0xff172331);bg.setCornerRadius(dp(16));card.setBackground(bg);
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(8),0,dp(4));parent.addView(card,p);
+        card.addView(label(title,18,0xfff0f4fa));TextView desc=label(description,13,0xffa9bdcf);desc.setPadding(0,dp(6),0,dp(8));card.addView(desc);return card;
+    }
+    private void renderTools(){
+        if(toolList==null)return;toolList.removeAllViews();launchButtons.clear();
+        toolList.addView(label(category,21,0xffffad64));
+        for(ToolCatalog.Tool t:ToolCatalog.ALL)if(t.category.equals(category)){
+            LinearLayout c=card(toolList,t.name,t.description);Button launch=new Button(this);launch.setAllCaps(false);
+            launch.setText(t.template.isEmpty()?"Requires hardware":t.fields.length>0?"Configure":t.starts?"Start":"Open");
+            launch.setEnabled(connected&&!t.template.isEmpty());launch.setOnClickListener(v->configure(t));c.addView(launch);launchButtons.add(launch);
+        }
+    }
+    private void configure(ToolCatalog.Tool tool){
+        if(!connected){status.setText("Connect the ProS3 first");return;}
+        if(tool.fields.length==0){executeTool(tool,tool.command());return;}
+        LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(20),dp(10),dp(20),dp(8));
+        List<java.util.function.Supplier<String>> readers=new ArrayList<>();
+        for(ToolCatalog.Field f:tool.fields){
+            TextView caption=new TextView(this);caption.setText(f.name);form.addView(caption);
+            if(f.type.equals("choice")||f.type.equals("ap")){
+                final List<String> values=new ArrayList<>(),labels=new ArrayList<>();
+                if(f.type.equals("ap")){
+                    if(results.networks.isEmpty()){new AlertDialog.Builder(this).setTitle("Discover networks first").setMessage("Start a Wi-Fi scan, tap Stop, then tap Networks in Results. Return here to choose a network by name.").setPositiveButton("OK",null).show();return;}
+                    for(Map.Entry<String,String> e:results.networks.entrySet()){values.add(e.getKey());labels.add(e.getValue());}
+                }else{values.addAll(Arrays.asList(f.choices));labels.addAll(values);}
+                Spinner spinner=new Spinner(this);ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,labels);adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);spinner.setAdapter(adapter);form.addView(spinner);readers.add(()->values.get(spinner.getSelectedItemPosition()));
+            }else{
+                EditText input=new EditText(this);input.setSingleLine(true);
+                input.setInputType(f.type.equals("number")?android.text.InputType.TYPE_CLASS_NUMBER:android.text.InputType.TYPE_CLASS_TEXT|(f.type.equals("password")?android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD:android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
+                form.addView(input);readers.add(()->input.getText().toString());
+            }
+        }
+        TextView error=new TextView(this);error.setTextColor(0xffd04840);form.addView(error);
+        ScrollView scroller=new ScrollView(this);scroller.addView(form);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle(tool.name).setView(scroller).setNegativeButton("Cancel",null).setPositiveButton(tool.starts?"Start":"Apply",null).create();
+        dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            try{String[] values=new String[readers.size()];for(int i=0;i<values.length;i++)values[i]=readers.get(i).get();String cmd=tool.command(values);dialog.dismiss();executeTool(tool,cmd);}
+            catch(IllegalArgumentException ex){error.setText(ex.getMessage());}
+        }));dialog.show();
+    }
+    private void executeTool(ToolCatalog.Tool tool,String cmd){
+        Runnable run=()->{if(tool.starts&&!send("stopscan"))return;if(send(cmd)){activityLabel.setText("Requested: "+tool.name+" · see Results for device status");showResults(true);}};
+        if(tool.confirm)new AlertDialog.Builder(this).setTitle(tool.name).setMessage(tool.description+"\n\nRun this action?").setNegativeButton("Cancel",null).setPositiveButton("Run",(d,w)->run.run()).show();else run.run();
+    }
+    private void renderResults(){
+        if(resultCards==null)return;resultCards.removeAllViews();
+        resultCards.addView(label(results.networks.size()+" networks  ·  "+results.ble.size()+" BLE devices",16,0xffffad64));
+        int count=0;for(Map.Entry<String,String> e:results.networks.entrySet()){
+            if(++count>60)break;String id=e.getKey();LinearLayout c=card(resultCards,"Wi-Fi · #"+id,e.getValue());LinearLayout r=row(c);
+            button(r,"Details",()->send("info -a "+id));button(r,"Select / deselect",()->send("select -a "+id));
+        }
+        count=0;for(Map.Entry<String,String> e:results.ble.entrySet()){
+            if(++count>60)break;card(resultCards,"BLE · #"+e.getKey(),e.getValue());
+        }
+        if(results.networks.size()>60||results.ble.size()>60)resultCards.addView(label("First 60 cards per type shown. More entries are in device responses; all cached networks appear in pickers.",12,0xff98a7b8));
+    }
+    private void advanced(){
+        EditText input=new EditText(this);input.setSingleLine(true);input.setHint("Marauder command");input.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        new AlertDialog.Builder(this).setTitle("Advanced command").setMessage("For options without dashboard controls. Responses appear in Results.").setView(input).setNegativeButton("Cancel",null).setPositiveButton("Send",(d,w)->{if(send(input.getText().toString()))showResults(true);}).show();
+    }
+
     private int dp(int n) { return (int)(getResources().getDisplayMetrics().density * n); }
     private TextView label(String text, int size, int color) {
         TextView view = new TextView(this); view.setText(text); view.setTextSize(size); view.setTextColor(color); return view;
@@ -167,8 +234,8 @@ public class MainActivity extends Activity {
                 ui.post(() -> {
                     if (session != generation) return;
                     connected = true; opening = false;
-                    status.setText("Connected · USB 115200 · ProS3 console");
-                    append("\n[USB connected. Tap Help for commands.]\n");
+                    status.setText("Connected · USB · ProS3"); renderTools();
+                    append("\n[USB connected. Choose a tool to begin.]\n");
                 });
             } catch (Exception e) {
                 closeTransport();
@@ -186,7 +253,7 @@ public class MainActivity extends Activity {
         final int session = generation;
         usbWorker.execute(() -> {
             if (session != generation || port == null) return;
-            try { port.write(payload, 1500); append("\n> " + line + "\n"); }
+            try { port.write(payload, 1500); append("\n> " + ToolResults.redact(line) + "\n"); }
             catch (Exception e) { ui.post(() -> { if (session == generation) disconnect("USB write failed · reconnect", false); }); }
         });
         return true;
@@ -218,7 +285,10 @@ public class MainActivity extends Activity {
             String chunk;
             synchronized(textLock) { chunk = pendingText.toString(); pendingText.setLength(0); flushScheduled = false; }
             boolean atBottom = !scroll.canScrollVertically(1);
-            output.append(chunk);
+            int previousRevision = results.revision;
+            String parsed = results.accept(chunk);
+            output.append(parsed);
+            if (previousRevision != results.revision) renderResults();
             if (output.length() > 65536) output.setText(output.getText().subSequence(output.length() - 49152, output.length()));
             if (atBottom) scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
         }, 100);
@@ -226,6 +296,9 @@ public class MainActivity extends Activity {
     private void disconnect(String reason, boolean stopScan) {
         generation++; connected = false; opening = false; pendingDevice = -1; activeDevice = -1;
         status.setText(reason);
+        synchronized(textLock) { pendingText.setLength(0); }
+        results.clear(); renderTools(); renderResults();
+        activityLabel.setText("Disconnected · reconnect to use tools");
         usbWorker.execute(() -> {
             if (stopScan && port != null) {
                 try { port.write("stopscan\n".getBytes(StandardCharsets.UTF_8), 300); } catch (Exception ignored) { }
