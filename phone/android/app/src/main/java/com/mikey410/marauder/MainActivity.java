@@ -1,6 +1,7 @@
 package com.mikey410.marauder;
 
 import android.app.*;
+import androidx.core.content.ContextCompat;
 import android.content.*;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -105,8 +106,7 @@ public class MainActivity extends Activity {
         setContentView(root);
         IntentFilter filter = new IntentFilter(PERMISSION);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-        if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        else registerReceiver(receiver, filter);
+        ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
     }
     private int dp(int n) { return (int)(getResources().getDisplayMetrics().density * n); }
     private TextView label(String text, int size, int color) {
