@@ -4,6 +4,8 @@
 <!---Shields/Badges https://shields.io/--->
 
 # ESP32 Marauder
+
+**ProS3 + Android USB cable port:** [setup, builds, and phone app](docs/PROS3_USB.md).
 <p align="center"><img alt="Marauder logo" src="https://github.com/justcallmekoko/ESP32Marauder/blob/master/pictures/marauder_skull_patch_04_full_final.png?raw=true" width="300"></p>
 <p align="center">
   <b>A suite of WiFi/Bluetooth offensive and defensive tools for the ESP32</b>

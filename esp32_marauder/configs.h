@@ -53,6 +53,7 @@
     #define MARAUDER_PANCAKE
     #define MARAUDER_WS_C5_35_OVERRIDE
   #endif
+  //#define MARAUDER_PROS3
   //// END BOARD TARGETS
 
   // The official Arduino board package supplies this identifier for the XIAO
@@ -83,7 +84,9 @@
   #define MODE_CUSTOM 4
 
   //// HARDWARE NAMES
-  #ifdef MARAUDER_M5STICKC
+  #ifdef MARAUDER_PROS3
+    #define HARDWARE_NAME "Unexpected Maker ProS3 USB"
+  #elif defined(MARAUDER_M5STICKC)
     #define HARDWARE_NAME "M5Stick-C Plus"
   #elif defined(MARAUDER_M5STICKCP2)
     #define HARDWARE_NAME "M5Stick-C Plus2"
@@ -166,6 +169,22 @@
   #endif
 
   //// END FCC MODULE IDENTIFIERS
+
+  // Bare ProS3: QSPI PSRAM, native USB, no external screen/SD/GPS assumed.
+  #ifdef MARAUDER_PROS3
+    #include <sdkconfig.h>
+    #if !defined(CONFIG_IDF_TARGET_ESP32S3)
+      #error "ProS3 requires an ESP32-S3 board target"
+    #endif
+    #if !ARDUINO_USB_MODE || !ARDUINO_USB_CDC_ON_BOOT
+      #error "ProS3 phone build requires Hardware CDC and USB CDC on boot"
+    #endif
+    #define HAS_BT
+    #define HAS_PSRAM
+    #define HAS_NIMBLE_2
+    #define HAS_IDF_3
+    #define HAS_CSI_MOTION
+  #endif
 
  //// BOARD FEATURES
  #if defined(DUAL_MINI_C5)

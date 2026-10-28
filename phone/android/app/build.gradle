@@ -1,0 +1,20 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.mikey410.marauder'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.mikey410.marauder'
+        minSdk 26
+        targetSdk 35
+        versionCode 5
+        versionName '0.3.2'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+dependencies {
+    implementation 'com.github.mik3y:usb-serial-for-android:3.9.0'
+    implementation 'androidx.core:core:1.15.0'
+}
