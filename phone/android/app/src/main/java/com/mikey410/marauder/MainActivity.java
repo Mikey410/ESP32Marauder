@@ -224,7 +224,7 @@ public class MainActivity extends Activity {
     private void openReadings(String title){
         if(readingDialog!=null)readingDialog.dismiss();ScrollView scrollView=new ScrollView(this);readings=column();readings.setPadding(dp(22),dp(8),dp(22),dp(16));scrollView.addView(readings);
         readingDialog=new AlertDialog.Builder(this).setTitle(title.isEmpty()?"Readings":title).setView(scrollView).setPositiveButton("Done",null).create();
-        readingDialog.setOnDismissListener(d->{readings=null;readingDialog=null;});renderReadings();readingDialog.show();
+        AlertDialog current=readingDialog;current.setOnDismissListener(d->{if(readingDialog==current){readings=null;readingDialog=null;}});renderReadings();readingDialog.show();
     }
     private void renderReadings(){
         if(readings==null)return;readings.removeAllViews();if(recentReadings.isEmpty()){readings.addView(text(connected?"Waiting for the device…":"Connect your ProS3 to continue.",16,MUTED));return;}
@@ -277,11 +277,13 @@ public class MainActivity extends Activity {
         if(tool.confirm)new AlertDialog.Builder(this).setTitle(tool.name).setMessage(tool.description+"\n\nRun this action?").setNegativeButton("Cancel",null).setPositiveButton("Run",(d,w)->run.run()).show();else run.run();
     }
     private void advanced(){
-        new AlertDialog.Builder(this).setTitle("Advanced").setItems(new String[]{"Custom command","Full device response","Command reference"},(dialog,which)->{
+        new AlertDialog.Builder(this).setTitle("Advanced").setItems(new String[]{"Custom command","Full device response","Command reference","Stop activity","Clear phone results"},(dialog,which)->{
             if(which==0){EditText input=new EditText(this);input.setSingleLine(true);input.setHint("Command");input.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
                 new AlertDialog.Builder(this).setTitle("Custom command").setView(input).setNegativeButton("Cancel",null).setPositiveButton("Send",(d,w)->runDirect("Command result",input.getText().toString(),false)).show();
             }else if(which==1){TextView detail=text(output.getText().toString(),14,INK);detail.setTextIsSelectable(true);detail.setPadding(dp(20),dp(12),dp(20),dp(12));ScrollView sv=new ScrollView(this);sv.addView(detail);new AlertDialog.Builder(this).setTitle("Full device response").setView(sv).setPositiveButton("Done",null).show();
-            }else runDirect("Command reference","help",false);
+            }else if(which==2)runDirect("Command reference","help",false);
+            else if(which==3)stopActivity();
+            else {synchronized(textLock){pendingText.setLength(0);}results.clear();recentReadings.clear();output.setText("");renderResults();renderReadings();Toast.makeText(this,"Phone results cleared",Toast.LENGTH_SHORT).show();}
         }).setNegativeButton("Done",null).show();
     }
 
