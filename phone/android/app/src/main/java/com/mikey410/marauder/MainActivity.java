@@ -72,7 +72,7 @@ public class MainActivity extends Activity {
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
     }
-    private static final int INK=0xff1c1c1e, MUTED=0xff767680, BLUE=0xff007aff, SURFACE=0xfff2f2f7;
+    private static final int INK=0xfff5f5f7, MUTED=0xffadaeb8, BLUE=0xff69adff, SURFACE=0xff101012, CARD=0xff1c1c1e, FIELD=0xff2c2c2e, TINT=0xff1a2c43, PRIMARY=0xff005dcc;
     private LinearLayout toolList, resultCards, devicePage, activeBar, readings;
     private ScrollView resultsPage, toolsScroll, deviceScroll, activityPage;
     private LinearLayout liveCards;
@@ -96,14 +96,14 @@ public class MainActivity extends Activity {
     private void space(LinearLayout parent,int height){View v=new View(this);parent.addView(v,new LinearLayout.LayoutParams(1,dp(height)));}
     private Button action(String title,boolean primary,Runnable callback){
         Button b=new Button(this);b.setText(title);b.setAllCaps(false);b.setTextSize(16);b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
-        b.setTextColor(primary?Color.WHITE:BLUE);b.setBackground(background(primary?BLUE:0xffe8f1ff,14));b.setMinHeight(dp(50));b.setMinimumHeight(dp(50));
+        b.setTextColor(primary?Color.WHITE:BLUE);b.setBackground(background(primary?PRIMARY:TINT,14));b.setMinHeight(dp(50));b.setMinimumHeight(dp(50));
         b.setPadding(dp(14),dp(10),dp(14),dp(10));b.setStateListAnimator(null);b.setOnClickListener(v->callback.run());return b;
     }
     private void section(LinearLayout parent,String name){TextView t=text(name,20,INK);t.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));t.setPadding(0,dp(22),0,dp(10));parent.addView(t);}
-    private LinearLayout surface(LinearLayout parent){LinearLayout c=column();c.setPadding(dp(18),dp(18),dp(18),dp(18));c.setBackground(background(Color.WHITE,22));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,0,0,dp(10));parent.addView(c,p);return c;}
+    private LinearLayout surface(LinearLayout parent){LinearLayout c=column();c.setPadding(dp(18),dp(18),dp(18),dp(18));c.setBackground(background(CARD,22));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,0,0,dp(10));parent.addView(c,p);return c;}
     private void buildDashboard(LinearLayout root){
         getWindow().setStatusBarColor(SURFACE);getWindow().setNavigationBarColor(SURFACE);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().getDecorView().setSystemUiVisibility(0);
         LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);root.addView(top);
         TextView brand=text("Marauder",15,MUTED);top.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
         connectionButton=action("Connect",false,()->{if(connected)showTab("Device");else chooseDevice();});connectionButton.setTextSize(13);connectionButton.setMinHeight(dp(44));connectionButton.setMinimumHeight(dp(44));top.addView(connectionButton);
@@ -112,13 +112,13 @@ public class MainActivity extends Activity {
         FrameLayout pages=new FrameLayout(this);root.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
         resultsPage=new ScrollView(this);resultsPage.setFillViewport(true);resultsPage.setVerticalScrollBarEnabled(false);scroll=resultsPage;
         LinearLayout nearby=column();resultsPage.addView(nearby);pages.addView(resultsPage);
-        LinearLayout segments=new LinearLayout(this);segments.setPadding(dp(4),dp(4),dp(4),dp(4));segments.setBackground(background(0xffe5e5ea,14));nearby.addView(segments);
+        LinearLayout segments=new LinearLayout(this);segments.setPadding(dp(4),dp(4),dp(4),dp(4));segments.setBackground(background(FIELD,14));nearby.addView(segments);
         wifiSegment=action("Wi-Fi",false,()->setDiscovery(false));bleSegment=action("Bluetooth",false,()->setDiscovery(true));
         segments.addView(wifiSegment,new LinearLayout.LayoutParams(0,-2,1));segments.addView(bleSegment,new LinearLayout.LayoutParams(0,-2,1));space(nearby,16);
         scanButton=action("Find networks",true,this::startDiscovery);nearby.addView(scanButton,new LinearLayout.LayoutParams(-1,-2));space(nearby,16);
         resultCards=column();nearby.addView(resultCards);
         toolsScroll=new ScrollView(this);toolsScroll.setVerticalScrollBarEnabled(false);LinearLayout toolsContent=column();toolsScroll.addView(toolsContent);pages.addView(toolsScroll);
-        EditText search=new EditText(this);search.setSingleLine(true);search.setTextSize(16);search.setHint("Find a tool");search.setTextColor(INK);search.setHintTextColor(MUTED);search.setPadding(dp(16),dp(12),dp(16),dp(12));search.setBackground(background(0xffe5e5ea,14));toolsContent.addView(search);
+        EditText search=new EditText(this);search.setSingleLine(true);search.setTextSize(16);search.setHint("Find a tool");search.setTextColor(INK);search.setHintTextColor(MUTED);search.setPadding(dp(16),dp(12),dp(16),dp(12));search.setBackground(background(FIELD,14));toolsContent.addView(search);
         search.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int c,int f){}public void onTextChanged(CharSequence s,int a,int b,int c){query=s.toString().trim();renderTools();}public void afterTextChanged(android.text.Editable e){}});
         toolList=column();toolsContent.addView(toolList);
         deviceScroll=new ScrollView(this);deviceScroll.setVerticalScrollBarEnabled(false);devicePage=column();deviceScroll.addView(devicePage);pages.addView(deviceScroll);
@@ -129,9 +129,9 @@ public class MainActivity extends Activity {
         activityContent.addView(action("Refresh selected networks",false,()->send("list -a")));space(activityContent,12);
         TextView note=text("Device responses confirm communication, not the effect of a radio tool.",12,MUTED);activityContent.addView(note);
         section(activityContent,"Live readings");liveCards=column();activityContent.addView(liveCards);
-        activeBar=new LinearLayout(this);activeBar.setGravity(Gravity.CENTER_VERTICAL);activeBar.setPadding(dp(12),dp(8),dp(8),dp(8));activeBar.setBackground(background(Color.WHITE,18));
+        activeBar=new LinearLayout(this);activeBar.setGravity(Gravity.CENTER_VERTICAL);activeBar.setPadding(dp(12),dp(8),dp(8),dp(8));activeBar.setBackground(background(CARD,18));
         activityLabel=text("",13,INK);activityLabel.setMaxLines(2);activityLabel.setOnClickListener(v->showTab("Activity"));activeBar.addView(activityLabel,new LinearLayout.LayoutParams(0,-2,1));
-        Button stop=action("Stop",false,this::stopActivity);stop.setTextColor(0xffd93338);activeBar.addView(stop);root.addView(activeBar);activeBar.setVisibility(View.GONE);
+        Button stop=action("Stop",false,this::stopActivity);stop.setTextColor(0xffff8585);activeBar.addView(stop);root.addView(activeBar);activeBar.setVisibility(View.GONE);
         LinearLayout nav=new LinearLayout(this);nav.setPadding(0,dp(10),0,0);root.addView(nav);
         for(String tab:new String[]{"Nearby","Tools","Activity","Device"}){
             Button b=action(tab,false,()->showTab(tab));b.setTextSize(12);b.setCompoundDrawablesWithIntrinsicBounds(null,new AppIcon(tab,dp(23),BLUE),null,null);b.setCompoundDrawablePadding(dp(5));nav.addView(b,new LinearLayout.LayoutParams(0,-2,1));navButtons.add(b);
@@ -142,7 +142,7 @@ public class MainActivity extends Activity {
     }
     private void showTab(String tab){
         pageTitle.setText(tab);resultsPage.setVisibility(tab.equals("Nearby")?View.VISIBLE:View.GONE);toolsScroll.setVisibility(tab.equals("Tools")?View.VISIBLE:View.GONE);deviceScroll.setVisibility(tab.equals("Device")?View.VISIBLE:View.GONE);
-        for(Button b:navButtons){boolean selected=b.getText().toString().equals(tab);b.setTextColor(selected?BLUE:MUTED);b.setBackground(background(selected?0xffe6efff:SURFACE,16));b.setCompoundDrawablesWithIntrinsicBounds(null,new AppIcon(b.getText().toString(),dp(23),selected?BLUE:MUTED),null,null);}
+        for(Button b:navButtons){boolean selected=b.getText().toString().equals(tab);b.setTextColor(selected?BLUE:MUTED);b.setBackground(background(selected?TINT:SURFACE,16));b.setCompoundDrawablesWithIntrinsicBounds(null,new AppIcon(b.getText().toString(),dp(23),selected?BLUE:MUTED),null,null);}
         activityPage.setVisibility(tab.equals("Activity")?View.VISIBLE:View.GONE);
         if(tab.equals("Device"))renderDevice();
     }
@@ -150,7 +150,7 @@ public class MainActivity extends Activity {
     private void renderResults(){
         if(resultCards==null)return;
         connectionButton.setText(connected?"Connected":"Connect");
-        wifiSegment.setBackground(background(!bluetooth?Color.WHITE:0xffe5e5ea,11));bleSegment.setBackground(background(bluetooth?Color.WHITE:0xffe5e5ea,11));wifiSegment.setTextColor(!bluetooth?INK:MUTED);bleSegment.setTextColor(bluetooth?INK:MUTED);
+        wifiSegment.setBackground(background(!bluetooth?CARD:FIELD,11));bleSegment.setBackground(background(bluetooth?CARD:FIELD,11));wifiSegment.setTextColor(!bluetooth?INK:MUTED);bleSegment.setTextColor(bluetooth?INK:MUTED);
         scanButton.setText(!discoveryMode.isEmpty()?"Finish scan":bluetooth?"Find devices":"Find networks");
         renderFeedback();
         resultCards.removeAllViews();Map<String,String> data=bluetooth?results.ble:results.networks;
@@ -202,7 +202,7 @@ public class MainActivity extends Activity {
         if(category.isEmpty()&&query.isEmpty()){
             section(toolList,"Explore");String[] names={"Wi-Fi","Bluetooth","Monitor","Network","Targets","Remote ID","Lab","Device","Hardware"};
             LinearLayout pair=null;for(int i=0;i<names.length;i++){String name=names[i];if(i%2==0){pair=new LinearLayout(this);toolList.addView(pair);}
-                LinearLayout tile=column();tile.setPadding(dp(18),dp(20),dp(14),dp(20));tile.setBackground(background(Color.WHITE,20));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1);p.setMargins(i%2==0?0:dp(6),0,i%2==0?dp(6):0,dp(12));pair.addView(tile,p);
+                LinearLayout tile=column();tile.setPadding(dp(18),dp(20),dp(14),dp(20));tile.setBackground(background(CARD,20));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1);p.setMargins(i%2==0?0:dp(6),0,i%2==0?dp(6):0,dp(12));pair.addView(tile,p);
                 ImageView icon=new ImageView(this);icon.setImageDrawable(new AppIcon(name,dp(28),BLUE));tile.addView(icon,new LinearLayout.LayoutParams(dp(32),dp(32)));space(tile,16);tile.addView(text(name,17,INK));tile.setOnClickListener(v->{category=name;renderTools();toolsScroll.smoothScrollTo(0,0);});tile.setContentDescription(name+" tools");tile.setFocusable(true);
             }return;
         }
@@ -224,7 +224,7 @@ public class MainActivity extends Activity {
             LinearLayout r=surface(devicePage);r.addView(text(item[0]+"  ›",16,INK));r.setOnClickListener(v->configure(findTool(item[1])));r.setFocusable(true);
         }
         LinearLayout advancedRow=surface(devicePage);advancedRow.addView(text("Advanced  ›",16,INK));advancedRow.setOnClickListener(v->advanced());advancedRow.setFocusable(true);
-        section(devicePage,"About");LinearLayout about=surface(devicePage);about.addView(text("Marauder",17,INK));space(about,6);about.addView(text("Version 0.3.1 · USB connection",14,MUTED));
+        section(devicePage,"About");LinearLayout about=surface(devicePage);about.addView(text("Marauder",17,INK));space(about,6);about.addView(text("Version 0.3.2 · USB connection",14,MUTED));
         about.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("About this app").setMessage("Controls the Marauder firmware on your ProS3 through a USB cable. GPS, SD card and on-board display features need additional hardware.").setPositiveButton("Done",null).show());
     }
     private void beginReadout(String title){activeTitle=title;recentReadings.clear();renderReadings();renderLive();}
@@ -240,14 +240,14 @@ public class MainActivity extends Activity {
     }
     private void renderReadings(){
         if(readings==null)return;readings.removeAllViews();if(recentReadings.isEmpty()){readings.addView(text(connected?"Waiting for the device…":"Connect your ProS3 to continue.",16,MUTED));return;}
-        for(String line:recentReadings){TextView t=text(line,15,INK);t.setPadding(0,dp(10),0,dp(10));t.setTextIsSelectable(true);readings.addView(t);View divider=new View(this);divider.setBackgroundColor(0xffe5e5ea);readings.addView(divider,new LinearLayout.LayoutParams(-1,dp(1)));}
+        for(String line:recentReadings){TextView t=text(line,15,INK);t.setPadding(0,dp(10),0,dp(10));t.setTextIsSelectable(true);readings.addView(t);View divider=new View(this);divider.setBackgroundColor(FIELD);readings.addView(divider,new LinearLayout.LayoutParams(-1,dp(1)));}
     }
     private void acceptReadings(String parsed){
         boolean changed=false;for(String line:parsed.split("\n")){String clean=ResultPresentation.reading(line);if(clean.isEmpty())continue;if(recentReadings.size()>=32)recentReadings.remove(0);recentReadings.add(clean);changed=true;}
         if(changed){renderReadings();renderLive();}
     }
     private void renderFeedback(){
-        if(feedbackTitle==null)return;feedbackTitle.setText(feedback.status());feedbackTitle.setTextColor(feedback.attention?0xffc52b31:INK);
+        if(feedbackTitle==null)return;feedbackTitle.setText(feedback.status());feedbackTitle.setTextColor(feedback.attention?0xffff8585:INK);
         String detail=feedback.detail;
         if(detail.isEmpty())detail=feedback.timedOut?"No matching reply yet. Check USB connection; the action is not confirmed.":feedback.received?"The board echoed this request. Waiting for its output.":"Waiting for a reply from the ProS3.";
         feedbackDetail.setText(detail);
@@ -289,7 +289,7 @@ public class MainActivity extends Activity {
                 form.addView(input);readers.add(()->input.getText().toString());
             }
         }
-        TextView error=new TextView(this);error.setTextColor(0xffd04840);form.addView(error);
+        TextView error=new TextView(this);error.setTextColor(0xffff8585);form.addView(error);
         ScrollView scroller=new ScrollView(this);scroller.addView(form);
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle(tool.name).setView(scroller).setNegativeButton("Cancel",null).setPositiveButton(tool.starts?"Start":"Apply",null).create();
         dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
