@@ -96,7 +96,7 @@ public class MainActivity extends Activity {
         b.setTextColor(primary?Color.WHITE:BLUE);b.setBackground(background(primary?BLUE:0xffe8f1ff,14));b.setMinHeight(dp(50));b.setMinimumHeight(dp(50));
         b.setPadding(dp(14),dp(10),dp(14),dp(10));b.setStateListAnimator(null);b.setOnClickListener(v->callback.run());return b;
     }
-    private void section(LinearLayout parent,String name){TextView t=text(name,20,INK);t.setTypeface(Typeface.create("sans-serif-medium",0));t.setPadding(0,dp(22),0,dp(10));parent.addView(t);}
+    private void section(LinearLayout parent,String name){TextView t=text(name,20,INK);t.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));t.setPadding(0,dp(22),0,dp(10));parent.addView(t);}
     private LinearLayout surface(LinearLayout parent){LinearLayout c=column();c.setPadding(dp(18),dp(18),dp(18),dp(18));c.setBackground(background(Color.WHITE,22));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,0,0,dp(10));parent.addView(c,p);return c;}
     private void buildDashboard(LinearLayout root){
         getWindow().setStatusBarColor(SURFACE);getWindow().setNavigationBarColor(SURFACE);
@@ -104,7 +104,7 @@ public class MainActivity extends Activity {
         LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);root.addView(top);
         TextView brand=text("Marauder",15,MUTED);top.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
         connectionButton=action("Connect",false,()->{if(connected)showTab("Device");else chooseDevice();});connectionButton.setTextSize(13);connectionButton.setMinHeight(dp(44));connectionButton.setMinimumHeight(dp(44));top.addView(connectionButton);
-        pageTitle=text("Nearby",34,INK);pageTitle.setTypeface(Typeface.create("sans-serif-bold",0));pageTitle.setPadding(0,dp(14),0,dp(16));root.addView(pageTitle);
+        pageTitle=text("Nearby",34,INK);pageTitle.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));pageTitle.setPadding(0,dp(14),0,dp(16));root.addView(pageTitle);
         status=text("Connect your ProS3 to get started.",13,MUTED);status.setPadding(0,0,0,dp(10));root.addView(status);
         FrameLayout pages=new FrameLayout(this);root.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
         resultsPage=new ScrollView(this);resultsPage.setFillViewport(true);resultsPage.setVerticalScrollBarEnabled(false);scroll=resultsPage;
